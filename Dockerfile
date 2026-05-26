@@ -1,5 +1,8 @@
 # Single Render web service: nginx (public PORT) → Next.js (/) + FastAPI (/api, /health, /docs, /generated).
 # Build with empty NEXT_PUBLIC_API_URL so the browser calls the same origin through nginx.
+#
+# Runtime MUST use the same Python base as the venv stage — copying /venv into node:bookworm
+# breaks uvicorn with "cannot execute: required file not found" (wrong interpreter / libc).
 
 # --- Frontend (Next.js standalone) ---
 FROM node:20-bookworm AS frontend-build
@@ -20,13 +23,23 @@ RUN /venv/bin/pip install --no-cache-dir --upgrade pip \
  && /venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 COPY backend/app /install/app/app
 
-# --- Runtime: Node + nginx + Python venv ---
-FROM node:20-bookworm AS runner
+# --- Runtime: same Python base as venv + Node 20 + nginx ---
+FROM python:3.11-slim-bookworm AS runner
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx \
+    ca-certificates \
     curl \
+    gnupg \
+ && mkdir -p /etc/apt/keyrings \
+ && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+ && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+    > /etc/apt/sources.list.d/nodesource.list \
+ && apt-get update && apt-get install -y --no-install-recommends \
+    nodejs \
+    nginx \
+    gettext-base \
     ffmpeg \
     libglib2.0-0 \
     libsm6 \
