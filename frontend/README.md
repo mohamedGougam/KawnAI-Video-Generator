@@ -1,16 +1,18 @@
 # Kawn Video Generation — Frontend
 
-Next.js + Tailwind interface for the FastAPI backend.
+Next.js + Tailwind creator UI for the FastAPI backend.
 
-## Setup
+## Render
+
+This app is deployed via the root [`render.yaml`](../render.yaml) as the **`kawn-web`** Docker service. The build bakes `NEXT_PUBLIC_API_URL` (default `https://kawn-api.onrender.com`). Change it if your API hostname differs.
+
+## Local development
 
 ```powershell
-cd "C:\Kawn Video Generation\frontend"
+cd frontend
 npm install
 copy .env.local.example .env.local
 npm run dev
 ```
 
-Configure `NEXT_PUBLIC_API_URL` to match your API (defaults to `http://127.0.0.1:8000` in `src/lib/api.ts`).
-
-The UI works fully against **`VIDEO_PROVIDER=mock`** — no GPU required.
+Set `NEXT_PUBLIC_API_URL` in `.env.local` to your API origin (for example `http://127.0.0.1:8000`).

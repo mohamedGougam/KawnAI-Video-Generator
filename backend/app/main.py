@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import video_routes
-from app.config import backend_root, get_settings
+from app.config import generated_static_mount, get_settings, resolve_storage_path
 from app.models.video_schema import HealthResponse
-from app.utils.gpu_check import get_gpu_info
+from app.utils.gpu_check import describe_device_mode, get_gpu_info
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("kawn.backend")
@@ -20,7 +19,7 @@ logger = logging.getLogger("kawn.backend")
 app = FastAPI(
     title="Kawn Video Generation API",
     version="1.0.0",
-    description="Text-to-video engine for Kawn — mock-first with pluggable HF/Diffusers providers.",
+    description="Text-to-video engine for Kawn — Hugging Face Diffusers (Wan2.1) with CPU/GPU auto selection.",
 )
 
 settings = get_settings()
@@ -40,7 +39,8 @@ def health() -> HealthResponse:
     gpu = get_gpu_info()
     return HealthResponse(
         status="ok",
-        video_provider=s.video_provider,
+        inference_backend="huggingface",
+        device=describe_device_mode(s.device),
         cuda_available=gpu.cuda_available,
         cuda_device=gpu.device_name,
         cuda_version=gpu.cuda_version,
@@ -50,12 +50,19 @@ def health() -> HealthResponse:
 
 app.include_router(video_routes.router)
 
-_gen_root = backend_root() / "generated"
+_s = get_settings()
+_gen_root = generated_static_mount(_s)
 _gen_root.mkdir(parents=True, exist_ok=True)
+resolve_storage_path(_s.generated_video_dir).mkdir(parents=True, exist_ok=True)
+resolve_storage_path(_s.generated_thumbnail_dir).mkdir(parents=True, exist_ok=True)
+
 app.mount(
     "/generated",
     StaticFiles(directory=str(_gen_root)),
     name="generated",
 )
 
-logger.info("Kawn Video Generation API ready (provider=%s)", settings.video_provider)
+logger.info(
+    "Kawn Video Generation API ready (inference=huggingface, device_mode=%s)",
+    describe_device_mode(settings.device),
+)

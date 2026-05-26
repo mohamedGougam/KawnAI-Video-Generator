@@ -40,7 +40,8 @@ export type VideoRecord = {
 
 export type HealthResponse = {
   status: string;
-  video_provider: string;
+  inference_backend: string;
+  device: string;
   cuda_available: boolean;
   cuda_device?: string | null;
   cuda_version?: string | null;

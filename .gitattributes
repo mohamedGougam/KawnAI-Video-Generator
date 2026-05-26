@@ -1,0 +1,2 @@
+# Render / Linux shell scripts must use LF
+*.sh text eol=lf

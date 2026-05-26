@@ -1,42 +1,51 @@
 # Kawn Video Generation — Backend
 
-FastAPI service that orchestrates **mock** or **Hugging Face / Diffusers** text-to-video generation for the Kawn creator workflow.
+FastAPI service that runs **live** text-to-video inference via **Hugging Face Diffusers** (Wan2.1 by default).
 
-## Quick start (mock provider)
+## Deploy on Render (recommended)
+
+The repo root includes [`render.yaml`](../render.yaml) with two Docker web services:
+
+| Service | Role |
+| --- | --- |
+| `kawn-api` | FastAPI + Diffusers |
+| `kawn-web` | Next.js UI |
+
+In the Render Dashboard: **New → Blueprint → connect this repo**.  
+If you rename services, update `NEXT_PUBLIC_API_URL` and `CORS_ORIGINS` to match your public `*.onrender.com` URLs.
+
+Set **`HF_TOKEN`** on the API service if your model requires authentication.
+
+### CPU vs GPU
+
+- The included **Dockerfile** installs **CPU PyTorch**, which matches typical **Render web** instances.
+- Wan-class models on CPU are **slow** and may **OOM**; for production quality/latency, use a **GPU** host (or a Render GPU instance if available on your plan) and swap the PyTorch layer in `backend/Dockerfile` to a CUDA wheel.
+
+## Local development
 
 ```powershell
-cd "C:\Kawn Video Generation\backend"
+cd backend
 python -m venv .venv
 .\.venv\Scripts\activate
+pip install torch --index-url https://download.pytorch.org/whl/cu124   # pick your CUDA
 pip install -r requirements.txt
 copy .env.example .env
-# Ensure VIDEO_PROVIDER=mock in .env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Open `http://127.0.0.1:8000/docs` for interactive OpenAPI.
-
-## GPU / CUDA notes
-
-- `VIDEO_PROVIDER=huggingface` expects a **CUDA-enabled PyTorch** build and sufficient VRAM for the selected checkpoint.
-- **Wan2.1 T2V 1.3B** is the practical default for development GPUs; it is commonly run at **480p-class** resolutions. This API **clamps** some 720p requests to safer sizes when the active `HF_MODEL_ID` contains `1.3B` (see `model_provider.py`).
-- **Wan2.1 T2V 14B** supports higher fidelity **720p** runs but requires a large GPU.
-- If CUDA is missing, `/health` reports `cuda_available=false`. The **mock** provider still works for UI and integration testing.
-
-Install PyTorch with CUDA from the official matrix before installing the rest of the requirements:  
-https://pytorch.org/get-started/locally/
+Open `http://127.0.0.1:8000/docs`.
 
 ## Environment variables
 
-See `.env.example`. Important keys:
+See `.env.example`. Common keys:
 
 | Variable | Purpose |
 | --- | --- |
-| `VIDEO_PROVIDER` | `mock` or `huggingface` |
 | `HF_MODEL_ID` | Hugging Face repo id for Diffusers weights |
-| `DEVICE` | `cuda` (default) or `cpu` (not recommended for Wan) |
-| `MAX_DURATION_SECONDS` | Hard cap for generation requests |
-| `MOCK_SAMPLE_VIDEO_PATH` | Optional MP4 to copy for mock runs |
+| `DEVICE` | `auto` (default), `cuda`, or `cpu` |
+| `MAX_DURATION_SECONDS` | Hard cap for `duration_seconds` (default **20**) |
+| `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API |
+| `HF_TOKEN` | Optional token for gated models |
 
 ## HTTP API (examples)
 
@@ -44,13 +53,6 @@ See `.env.example`. Important keys:
 
 ```http
 GET /health HTTP/1.1
-Host: 127.0.0.1:8000
-```
-
-### List evaluated models
-
-```http
-GET /api/v1/models HTTP/1.1
 Host: 127.0.0.1:8000
 ```
 
@@ -66,69 +68,23 @@ Content-Type: application/json
   "style": "sports",
   "duration_seconds": 5,
   "resolution": "720p",
-  "aspect_ratio": "9:16",
-  "negative_prompt": "blurry, low quality, distorted faces, watermark, text artifacts"
+  "aspect_ratio": "9:16"
 }
 ```
 
-**Example response**
-
-```json
-{
-  "video_id": "uuid",
-  "status": "processing",
-  "message": "Video generation started"
-}
-```
-
-### Poll job status
+### Poll status
 
 ```http
 GET /api/v1/videos/{video_id} HTTP/1.1
-Host: 127.0.0.1:8000
-```
-
-```json
-{
-  "video_id": "uuid",
-  "status": "completed",
-  "prompt": "original prompt",
-  "style": "sports",
-  "video_url": "/generated/videos/{video_id}.mp4",
-  "thumbnail_url": "/generated/thumbnails/{video_id}.png",
-  "created_at": "2026-05-26T12:34:56.789012+00:00",
-  "error": null,
-  "message": null
-}
-```
-
-### List history
-
-```http
-GET /api/v1/videos HTTP/1.1
-Host: 127.0.0.1:8000
-```
-
-### Delete
-
-```http
-DELETE /api/v1/videos/{video_id} HTTP/1.1
-Host: 127.0.0.1:8000
 ```
 
 ## Architecture
 
-- **API layer**: `app/api/video_routes.py` — no direct model calls.
-- **Service layer**: `app/services/video_generation_service.py` — persistence + async jobs.
-- **Model abstraction**: `app/services/model_provider.py` — `MockVideoProvider` / `HuggingFaceVideoProvider`.
-- **Storage**: local `generated/videos` and `generated/thumbnails` (swap for S3/GCS later).
-- **Metadata**: SQLite at `generated/metadata/videos.db` (simple to migrate to a hosted DB).
+- **API**: `app/api/video_routes.py`
+- **Orchestration**: `app/services/video_generation_service.py`
+- **Model**: `app/services/model_provider.py` (`HuggingFaceVideoProvider`)
+- **Storage**: local directories (override with absolute paths in env on Render + attach a disk if you need persistence across deploys)
 
 ## Moderation
 
-`app/services/moderation.py` contains **placeholder** keyword heuristics. Replace with a hosted moderation API before production traffic.
-
-## Troubleshooting
-
-- **Mock encode errors**: install `imageio[ffmpeg]` (included in `requirements.txt`) or set `MOCK_SAMPLE_VIDEO_PATH` to a valid MP4.
-- **Import errors for `WanPipeline`**: upgrade `diffusers` to a release that includes Wan (see Hugging Face docs for Wan2.1).
+`app/services/moderation.py` is placeholder-only — replace before production.

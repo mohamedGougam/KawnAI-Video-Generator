@@ -141,8 +141,8 @@ export default function HomePage() {
   };
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 lg:flex-row">
-      <section className="flex-1 space-y-6">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-3 py-8 sm:px-4 sm:py-10 lg:flex-row lg:items-start">
+      <section className="flex w-full min-w-0 flex-1 flex-col space-y-6">
         <header className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-kawn-orange">
             Kawn Creator Lab
@@ -201,11 +201,11 @@ export default function HomePage() {
             </label>
 
             <label className="space-y-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Duration (seconds)
+              Duration (seconds, max 20)
               <input
                 type="number"
                 min={1}
-                max={10}
+                max={20}
                 step={0.5}
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value))}
@@ -268,7 +268,8 @@ export default function HomePage() {
           </p>
           {health ? (
             <ul className="mt-2 space-y-1">
-              <li>Provider: {health.video_provider}</li>
+              <li>Inference: {health.inference_backend}</li>
+              <li>Device: {health.device}</li>
               <li>CUDA: {health.cuda_available ? "available" : "not available"}</li>
               {health.cuda_device && <li>GPU: {health.cuda_device}</li>}
               <li className="text-zinc-500">{health.message}</li>
@@ -281,7 +282,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="flex-1 space-y-6">
+      <section className="flex w-full min-w-0 flex-1 flex-col space-y-6">
         <div className="glass-card p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-white">Preview</h2>
@@ -292,24 +293,26 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
-            {videoSrc ? (
-              <video
-                key={videoSrc}
-                className="aspect-[9/16] w-full bg-black object-cover sm:aspect-video"
-                src={videoSrc}
-                controls
-                playsInline
-              />
-            ) : (
-              <div className="flex aspect-[9/16] flex-col items-center justify-center gap-2 bg-gradient-to-b from-kawn-charcoal to-black p-6 text-center text-sm text-zinc-500 sm:aspect-video">
-                <p>Your generated clip will appear here.</p>
-                <p className="text-xs text-zinc-600">
-                  Mock mode creates a short branded gradient clip so the UI works
-                  without installing multi‑gigabyte weights.
-                </p>
-              </div>
-            )}
+          <div className="mt-4 w-full max-w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
+            <div className="mx-auto flex w-full max-w-full items-center justify-center bg-black px-1 py-2 sm:px-3 sm:py-4">
+              {videoSrc ? (
+                <video
+                  key={videoSrc}
+                  className="h-auto w-full max-w-full object-contain max-h-[min(85vh,56rem)]"
+                  src={videoSrc}
+                  controls
+                  playsInline
+                />
+              ) : (
+                <div className="flex min-h-[min(50vh,22rem)] w-full max-w-full flex-col items-center justify-center gap-2 bg-gradient-to-b from-kawn-charcoal to-black px-4 py-10 text-center text-sm text-zinc-500 sm:min-h-[min(60vh,28rem)]">
+                  <p>Your generated clip will appear here.</p>
+                  <p className="max-w-md text-xs text-zinc-600">
+                    Generation runs on the API (Diffusers). First runs may download
+                    multi‑gigabyte weights — keep the tab open until the job completes.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {active?.status === "failed" && (

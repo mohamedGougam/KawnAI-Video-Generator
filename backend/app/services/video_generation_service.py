@@ -5,18 +5,22 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
+from pathlib import Path
 
-from app.config import Settings, backend_root, get_settings
+from app.config import Settings, backend_root, get_settings, resolve_storage_path
 from app.models.video_schema import VideoGenerateRequest, VideoRecordResponse
 from app.services.metadata_store import VideoMetadataStore, VideoRow
-from app.services.model_provider import (
-    HuggingFaceVideoProvider,
-    MockVideoProvider,
-    VideoModelProvider,
-)
+from app.services.model_provider import HuggingFaceVideoProvider
 from app.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
+
+
+def _relative_or_absolute(path: Path) -> str:
+    try:
+        return str(path.relative_to(backend_root()))
+    except ValueError:
+        return str(path)
 
 
 class VideoGenerationService:
@@ -26,7 +30,7 @@ class VideoGenerationService:
         settings: Settings,
         store: VideoMetadataStore,
         storage: StorageService,
-        provider: VideoModelProvider,
+        provider: HuggingFaceVideoProvider,
     ) -> None:
         self._settings = settings
         self._store = store
@@ -35,21 +39,15 @@ class VideoGenerationService:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "VideoGenerationService":
-        root = backend_root()
-        store = VideoMetadataStore((root / settings.database_path).resolve())
+        db_path = resolve_storage_path(settings.database_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        store = VideoMetadataStore(db_path)
         storage = StorageService(settings)
-        provider: VideoModelProvider
-        if settings.video_provider == "mock":
-            provider = MockVideoProvider(settings.mock_sample_video_path)
-        else:
-            provider = HuggingFaceVideoProvider(
-                model_id=settings.hf_model_id,
-                device=settings.device,
-            )
+        provider = HuggingFaceVideoProvider(
+            model_id=settings.hf_model_id,
+            device=settings.device,
+        )
         return cls(settings=settings, store=store, storage=storage, provider=provider)
-
-    def swap_provider_for_tests(self, provider: VideoModelProvider) -> None:
-        self._provider = provider
 
     async def start_generation(self, request: VideoGenerateRequest) -> str:
         video_id = self._store.create_pending(
@@ -85,8 +83,8 @@ class VideoGenerationService:
             )
             self._store.mark_completed(
                 video_id,
-                video_path=str(video_path.relative_to(backend_root())),
-                thumbnail_path=str(thumb_path.relative_to(backend_root())),
+                video_path=_relative_or_absolute(video_path),
+                thumbnail_path=_relative_or_absolute(thumb_path),
             )
         except Exception as e:
             logger.exception("Generation failed for %s", video_id)

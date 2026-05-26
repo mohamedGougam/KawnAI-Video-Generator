@@ -31,8 +31,8 @@ def get_gpu_info() -> GpuInfo:
         msg = f"CUDA is available ({name})."
     else:
         msg = (
-            "CUDA is not available. Install a CUDA-enabled PyTorch build and drivers, "
-            "or set VIDEO_PROVIDER=mock for development without a GPU."
+            "CUDA is not available; inference will run on CPU if DEVICE=auto or DEVICE=cpu. "
+            "CPU video generation is very slow and may run out of memory for large models."
         )
     return GpuInfo(
         cuda_available=cuda_ok,
@@ -43,7 +43,22 @@ def get_gpu_info() -> GpuInfo:
 
 
 def require_cuda_for_hf() -> None:
-    """Raise RuntimeError if Hugging Face provider needs CUDA but it is missing."""
+    """Raise RuntimeError if CUDA was explicitly requested but is missing."""
     info = get_gpu_info()
     if not info.cuda_available:
         raise RuntimeError(info.message)
+
+
+def describe_device_mode(requested: str) -> str:
+    """Effective device label for health checks (does not load the full pipeline)."""
+    try:
+        import torch
+    except ImportError:
+        return "unknown"
+
+    req = (requested or "auto").strip().lower()
+    if req == "cuda":
+        return "cuda" if torch.cuda.is_available() else "cuda_unavailable"
+    if req == "cpu":
+        return "cpu"
+    return "cuda" if torch.cuda.is_available() else "cpu"
