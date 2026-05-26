@@ -67,9 +67,28 @@ async function parseError(res: Response): Promise<string> {
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  const maxAttempts = 8;
+  let lastErr: Error | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
+      if (res.ok) return res.json();
+      const retriable = res.status >= 502 && res.status <= 504;
+      lastErr = new Error(await parseError(res));
+      if (retriable && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 750 * attempt));
+        continue;
+      }
+      throw lastErr;
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 750 * attempt));
+        continue;
+      }
+    }
+  }
+  throw lastErr ?? new Error("Health check failed");
 }
 
 export async function generateVideo(

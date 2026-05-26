@@ -264,7 +264,9 @@ export default function HomePage() {
           <p className="font-semibold text-zinc-200">Backend</p>
           <p className="mt-1">
             API base:{" "}
-            <span className="font-mono text-kawn-orange">{API_BASE}</span>
+            <span className="font-mono text-kawn-orange">
+              {API_BASE || "same origin (this site)"}
+            </span>
           </p>
           {health ? (
             <ul className="mt-2 space-y-1">
