@@ -33,6 +33,24 @@ app.add_middleware(
 )
 
 
+@app.get("/", tags=["system"])
+def root() -> dict[str, str | dict[str, str]]:
+    """Landing when someone opens the API base URL in a browser."""
+    return {
+        "service": "Kawn Video Generation API",
+        "message": (
+            "This host is the FastAPI backend, not the Next.js creator UI. "
+            "Use /docs to try the API, or open your frontend service URL in the browser."
+        ),
+        "links": {
+            "docs": "/docs",
+            "health": "/health",
+            "openapi": "/openapi.json",
+            "api_v1": "/api/v1/models",
+        },
+    }
+
+
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
     s = get_settings()
