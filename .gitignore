@@ -1,0 +1,33 @@
+# Root ignores (backend/frontend also ship their own .gitignore)
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Python (anywhere)
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Node / Next
+**/node_modules/
+**/.next/
+**/out/
+**/tsconfig.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Secrets & local env (tracked examples stay allowed)
+.env
+.env.local
+
+# Generated media (keep .gitkeep files tracked)
+backend/generated/videos/*.mp4
+backend/generated/thumbnails/*.png
+backend/generated/metadata/*.db

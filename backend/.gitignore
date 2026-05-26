@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.env
+generated/videos/*.mp4
+generated/thumbnails/*.png
+generated/metadata/*.db

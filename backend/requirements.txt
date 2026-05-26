@@ -1,0 +1,22 @@
+# Kawn Video Generation — Python backend
+#
+# Install PyTorch with CUDA from https://pytorch.org before `pip install -r requirements.txt`
+# if you plan to use VIDEO_PROVIDER=huggingface.
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+python-multipart>=0.0.9
+numpy>=1.26.0
+Pillow>=10.0.0
+imageio[ffmpeg]>=2.34.0
+
+# Hugging Face stack (used when VIDEO_PROVIDER=huggingface)
+diffusers>=0.31.0
+transformers>=4.44.0
+accelerate>=0.33.0
+safetensors>=0.4.0
+
+# Installed separately in most GPU setups:
+# torch -- see https://pytorch.org
