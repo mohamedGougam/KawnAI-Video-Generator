@@ -7,6 +7,7 @@
 | `backend/` | FastAPI + async jobs + SQLite metadata + generated media |
 | `frontend/` | Next.js + Tailwind creator UI |
 | `render.yaml` | Render Blueprint (two Docker web services) |
+| `Dockerfile` | API image at repo root (Render default `./Dockerfile`) |
 | `docs/SAMPLE_PROMPTS_KAWN.md` | Sample prompts for creators |
 
 ## Deploy (Render Blueprint)
@@ -15,6 +16,8 @@
 2. In Render: **New → Blueprint** → select the repo.
 3. Approve the two services (`kawn-api`, `kawn-web`).
 4. On the **API** service, add **`HF_TOKEN`** if your chosen `HF_MODEL_ID` requires it.
+
+**Manual “Web Service” (not Blueprint):** Render’s default **Dockerfile path** is `./Dockerfile` at the repo root. This repo includes that file for the **API**. For the **Next.js** site, create a second service and set **Dockerfile Path** to `frontend/Dockerfile`.
 
 Default public URLs (if you keep the service names):
 
@@ -25,7 +28,7 @@ If you rename services, update `NEXT_PUBLIC_API_URL` (web) and `CORS_ORIGINS` (A
 
 ### Important: CPU vs GPU
 
-The stock `backend/Dockerfile` installs **CPU PyTorch** so the API can boot on a normal Render web instance. **Wan-class video models are heavy**; CPU runs may be **slow** or hit **memory limits**. For real production throughput, plan a **GPU** environment (custom Docker base with CUDA wheels, or a GPU cloud) and point the frontend API URL there.
+The stock Docker setup installs **CPU PyTorch** so the API can boot on a normal Render web instance. **Wan-class video models are heavy**; CPU runs may be **slow** or hit **memory limits**. For real production throughput, plan a **GPU** environment (custom Docker base with CUDA wheels, or a GPU cloud) and point the frontend API URL there.
 
 ## Local development
 
