@@ -36,7 +36,7 @@ See `.env.example`. Common keys:
 | --- | --- |
 | `HF_MODEL_ID` | Hugging Face repo id for Diffusers weights |
 | `DEVICE` | `auto` (default), `cuda`, or `cpu` |
-| `MAX_DURATION_SECONDS` | Hard cap for `duration_seconds` (default **20**) |
+| `MAX_DURATION_SECONDS` | Hard cap for `duration_seconds` (default **5**) |
 | `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API |
 | `HF_TOKEN` | Optional token for gated models |
 

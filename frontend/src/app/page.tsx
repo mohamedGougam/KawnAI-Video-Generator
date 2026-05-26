@@ -201,14 +201,18 @@ export default function HomePage() {
             </label>
 
             <label className="space-y-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Duration (seconds, max 20)
+              Duration (seconds, max 5)
               <input
                 type="number"
                 min={1}
-                max={20}
+                max={5}
                 step={0.5}
                 value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
+                onChange={(e) =>
+                  setDuration(
+                    Math.min(5, Math.max(1, Number(e.target.value) || 1)),
+                  )
+                }
                 className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none ring-kawn-orange/40 focus:ring-2"
               />
             </label>

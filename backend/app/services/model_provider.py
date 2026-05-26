@@ -188,5 +188,5 @@ def _pixels_for_resolution(resolution: str, aspect: str, model_id: str) -> tuple
 def _frames_for_duration(duration_seconds: float, fps: int) -> int:
     """Map requested duration to a frame count (capped for memory / pipeline stability)."""
     n = int(duration_seconds * fps)
-    # Allow up to ~20s @ 24fps; many models still OOM at the high end on CPU — tune per checkpoint.
-    return max(9, min(n, 480))
+    # Product max is 5s; ~120 frames @ 24fps.
+    return max(9, min(n, 120))

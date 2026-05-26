@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     device: str = "auto"
     default_resolution: str = "720p"
     default_aspect_ratio: str = "9:16"
-    max_duration_seconds: int = 20
+    max_duration_seconds: int = 5
     generated_video_dir: str = "generated/videos"
     generated_thumbnail_dir: str = "generated/thumbnails"
     database_path: str = "generated/metadata/videos.db"

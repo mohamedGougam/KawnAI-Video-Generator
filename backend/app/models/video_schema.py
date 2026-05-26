@@ -34,7 +34,7 @@ class AspectRatio(str, Enum):
 class VideoGenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=4000)
     style: VideoStyle = VideoStyle.cinematic
-    duration_seconds: float = Field(default=5.0, ge=1.0, le=20.0)
+    duration_seconds: float = Field(default=5.0, ge=1.0, le=5.0)
     resolution: Resolution = Resolution.p720
     aspect_ratio: AspectRatio = AspectRatio.r9_16
     negative_prompt: str | None = Field(
