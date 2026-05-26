@@ -2,24 +2,17 @@
 
 FastAPI service that runs **live** text-to-video inference via **Hugging Face Diffusers** (Wan2.1 by default).
 
-## Deploy on Render (recommended)
+## Deploy on Render
 
-The repo root includes [`render.yaml`](../render.yaml) with two Docker web services:
+Production uses the **unified** image at the repo root: [`Dockerfile`](../Dockerfile) (Next.js + nginx + this API). See the root [`README.md`](../README.md) and [`render.yaml`](../render.yaml) (single web service).
 
-| Service | Role |
-| --- | --- |
-| `kawn-api` | FastAPI + Diffusers |
-| `kawn-web` | Next.js UI |
+For **local development** you run this package alone with Uvicorn (below). Optional: build only the API with [`Dockerfile`](../Dockerfile) stages or `backend/Dockerfile` if you maintain a split image.
 
-In the Render Dashboard: **New → Blueprint → connect this repo**.  
-If you rename services, update `NEXT_PUBLIC_API_URL` and `CORS_ORIGINS` to match your public `*.onrender.com` URLs.
-
-Set **`HF_TOKEN`** on the API service if your model requires authentication.
+Set **`HF_TOKEN`** on the Render service if your model requires authentication.
 
 ### CPU vs GPU
 
-- The included **Dockerfile** installs **CPU PyTorch**, which matches typical **Render web** instances.
-- Wan-class models on CPU are **slow** and may **OOM**; for production quality/latency, use a **GPU** host (or a Render GPU instance if available on your plan) and swap the PyTorch layer in `backend/Dockerfile` to a CUDA wheel.
+The unified **production** image installs **CPU PyTorch** so the stack can run on typical Render web instances. Wan-class models may be **slow** or **OOM** on small RAM; upgrade the instance or use a **CUDA** PyTorch base in the Dockerfile for GPU hosts.
 
 ## Local development
 

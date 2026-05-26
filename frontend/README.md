@@ -2,17 +2,24 @@
 
 Next.js + Tailwind creator UI for the FastAPI backend.
 
-## Render
+## Render (production)
 
-This app is deployed via the root [`render.yaml`](../render.yaml) as the **`kawn-web`** Docker service. The build bakes `NEXT_PUBLIC_API_URL` (default `https://kawn-api.onrender.com`). Change it if your API hostname differs.
+The live site is served by the **unified** root [`Dockerfile`](../Dockerfile): nginx routes `/` to this Next.js app and `/api`, `/health`, `/docs`, etc. to FastAPI. The production build sets **`NEXT_PUBLIC_API_URL` empty** so the browser uses **same-origin** API calls.
+
+See root [`README.md`](../README.md) and [`render.yaml`](../render.yaml).
 
 ## Local development
+
+Run the **backend** on port 8000, then:
 
 ```powershell
 cd frontend
 npm install
 copy .env.local.example .env.local
-npm run dev
 ```
 
-Set `NEXT_PUBLIC_API_URL` in `.env.local` to your API origin (for example `http://127.0.0.1:8000`).
+Set `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` in `.env.local`, then:
+
+```powershell
+npm run dev
+```
