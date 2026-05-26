@@ -1,36 +1,19 @@
-# Render Blueprint — deploy both services from one repo.
-# Docs: https://render.com/docs/infrastructure-as-code
-#
-# URLs assume service names `kawn-api` and `kawn-web`. If you rename them, update:
-# - NEXT_PUBLIC_API_URL (frontend build arg / Render env)
-# - CORS_ORIGINS on the API service
-#
-# GPU: Render web services are CPU-first. For practical Wan speeds, run the API on a
-# GPU-capable host and point the frontend at that URL, or attach a Render GPU instance
-# if available on your workspace plan.
+# One Render web service: Next.js UI + FastAPI API behind nginx on the same URL.
+# After first deploy, confirm CORS_ORIGINS matches your *.onrender.com URL (see envVars).
 
 services:
   - type: web
-    name: kawn-api
+    name: kawnai-video-generator
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: DEVICE
         value: auto
-      - key: CORS_ORIGINS
-        value: https://kawn-web.onrender.com
       - key: HF_HOME
         value: /var/hf-cache
+      - key: CORS_ORIGINS
+        value: https://kawnai-video-generator.onrender.com,http://localhost:3000
       - key: HF_TOKEN
         sync: false
-
-  - type: web
-    name: kawn-web
-    runtime: docker
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        value: https://kawn-api.onrender.com

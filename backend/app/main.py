@@ -39,8 +39,8 @@ def root() -> dict[str, str | dict[str, str]]:
     return {
         "service": "Kawn Video Generation API",
         "message": (
-            "This host is the FastAPI backend, not the Next.js creator UI. "
-            "Use /docs to try the API, or open your frontend service URL in the browser."
+            "Unified stack: open / for the creator UI, /docs for the API playground, "
+            "/health for status."
         ),
         "links": {
             "docs": "/docs",

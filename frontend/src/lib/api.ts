@@ -1,6 +1,11 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://127.0.0.1:8000";
+const raw = process.env.NEXT_PUBLIC_API_URL;
+const trimmed =
+  typeof raw === "string" ? raw.trim().replace(/\/$/, "") : "";
+
+/** Same-origin (empty) when built for unified Docker; localhost for local dev SSR. */
+export const API_BASE =
+  trimmed ||
+  (typeof window !== "undefined" ? "" : "http://127.0.0.1:8000");
 
 export type VideoStyle =
   | "cinematic"
@@ -104,5 +109,3 @@ export function absoluteMediaUrl(path: string): string {
   if (path.startsWith("http")) return path;
   return `${API_BASE}${path}`;
 }
-
-export { API_BASE };

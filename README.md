@@ -1,40 +1,40 @@
 # Kawn Video Generation
 
-**Single-vendor deployment on [Render](https://render.com)** using the root [`render.yaml`](./render.yaml): a **Next.js** frontend (`kawn-web`) and a **FastAPI + Diffusers** API (`kawn-api`). Inference is **always live** (Hugging Face / Wan2.1 by default).
+**Single Render web service** (one URL): **nginx** listens on Render’s `PORT`, serves the **Next.js** creator UI at `/`, and proxies **FastAPI** at `/api`, `/health`, `/docs`, `/generated`, etc. Inference is **live** (Hugging Face / Wan2.1 by default).
 
 | Path | Role |
 | --- | --- |
-| `backend/` | FastAPI + async jobs + SQLite metadata + generated media |
-| `frontend/` | Next.js + Tailwind creator UI |
-| `render.yaml` | Render Blueprint (two Docker web services) |
-| `Dockerfile` | API image at repo root (Render default `./Dockerfile`) |
+| `Dockerfile` | **Unified** production image (Next + FastAPI + nginx) |
+| `deploy/` | `nginx.conf.template` + `start.sh` for the unified image |
+| `render.yaml` | Render Blueprint with **one** web service (`kawnai-video-generator`) |
+| `backend/` | FastAPI + Diffusers + jobs + SQLite + generated media |
+| `frontend/` | Next.js + Tailwind UI (built with same-origin API by default) |
 | `docs/SAMPLE_PROMPTS_KAWN.md` | Sample prompts for creators |
 
-## Deploy (Render Blueprint)
+## Deploy on Render
 
-1. Push this repository to GitHub.
-2. In Render: **New → Blueprint** → select the repo.
-3. Approve the two services (`kawn-api`, `kawn-web`).
-4. On the **API** service, add **`HF_TOKEN`** if your chosen `HF_MODEL_ID` requires it.
+### Option A — Blueprint (recommended)
 
-**Manual “Web Service” (not Blueprint):** Render’s default **Dockerfile path** is `./Dockerfile` at the repo root. This repo includes that file for the **API**. For the **Next.js** site, create a second service and set **Dockerfile Path** to `frontend/Dockerfile`.
+1. Push to GitHub.
+2. Render → **New → Blueprint** → select this repo.
+3. Approve the **single** service from `render.yaml`.
+4. Set **`HF_TOKEN`** in the dashboard if your model requires it.
+5. If your public URL is **not** `https://kawnai-video-generator.onrender.com`, update **`CORS_ORIGINS`** in `render.yaml` (or in the service env) to match your real `https://<service>.onrender.com` URL, then redeploy.
 
-Default public URLs (if you keep the service names):
+### Option B — One “Web Service” from GitHub
 
-- API: `https://kawn-api.onrender.com`
-- UI: `https://kawn-web.onrender.com`
-
-If you rename services, update `NEXT_PUBLIC_API_URL` (web) and `CORS_ORIGINS` (API) to match.
+Connect the repo and keep the default **Dockerfile at repo root** — it now builds the **full stack**, not API-only.
 
 ### Important: CPU vs GPU
 
-The stock Docker setup installs **CPU PyTorch** so the API can boot on a normal Render web instance. **Wan-class video models are heavy**; CPU runs may be **slow** or hit **memory limits**. For real production throughput, plan a **GPU** environment (custom Docker base with CUDA wheels, or a GPU cloud) and point the frontend API URL there.
+The image installs **CPU PyTorch**. Wan-class models may be **slow** or hit **memory limits** on small instances. For production throughput, use a **GPU** host and swap the PyTorch layer in the `Dockerfile` (or scale up RAM/CPU on Render).
 
 ## Local development
 
-### API
+Run **API** and **frontend** separately (two terminals):
 
 ```powershell
+# Terminal 1 — API
 cd backend
 python -m venv .venv
 .\.venv\Scripts\activate
@@ -44,12 +44,12 @@ copy .env.example .env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend
-
 ```powershell
+# Terminal 2 — UI (points at local API)
 cd frontend
 npm install
 copy .env.local.example .env.local
+# ensure NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 in .env.local
 npm run dev
 ```
 
