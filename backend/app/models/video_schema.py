@@ -74,6 +74,7 @@ class HealthResponse(BaseModel):
     cuda_device: str | None = None
     cuda_version: str | None = None
     message: str
+    job_queue: Literal["inline", "redis"] = "inline"
 
 
 class ModelInfo(BaseModel):

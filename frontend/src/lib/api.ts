@@ -51,6 +51,7 @@ export type HealthResponse = {
   cuda_device?: string | null;
   cuda_version?: string | null;
   message: string;
+  job_queue?: "inline" | "redis";
 };
 
 async function parseError(res: Response): Promise<string> {

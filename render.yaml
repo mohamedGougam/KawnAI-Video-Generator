@@ -1,4 +1,8 @@
 # One Render web service: Next.js UI + FastAPI API behind nginx on the same URL.
+# Key Value (Redis) is included so the API enqueues jobs and start.sh runs an ARQ worker
+# (see deploy/start.sh). Remove the `kawnai-video-redis` service and REDIS_URL if you want
+# inline-only generation again.
+#
 # After first deploy, confirm CORS_ORIGINS matches your *.onrender.com URL (see envVars).
 
 services:
@@ -17,3 +21,13 @@ services:
         value: https://kawnai-video-generator.onrender.com,http://localhost:3000
       - key: HF_TOKEN
         sync: false
+      - key: REDIS_URL
+        fromService:
+          name: kawnai-video-redis
+          type: keyvalue
+          property: connectionString
+
+  # Redis-compatible queue for ARQ (private network; no public IP allowlist).
+  - type: keyvalue
+    name: kawnai-video-redis
+    ipAllowList: []

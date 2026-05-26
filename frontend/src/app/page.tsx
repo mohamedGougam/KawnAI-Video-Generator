@@ -276,6 +276,12 @@ export default function HomePage() {
             <ul className="mt-2 space-y-1">
               <li>Inference: {health.inference_backend}</li>
               <li>Device: {health.device}</li>
+              <li>
+                Jobs:{" "}
+                {health.job_queue === "redis"
+                  ? "Redis queue + worker"
+                  : "inline (API process)"}
+              </li>
               <li>CUDA: {health.cuda_available ? "available" : "not available"}</li>
               {health.cuda_device && <li>GPU: {health.cuda_device}</li>}
               <li className="text-zinc-500">{health.message}</li>

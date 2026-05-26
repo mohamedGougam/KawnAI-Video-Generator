@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +38,18 @@ class Settings(BaseSettings):
     database_path: str = "generated/metadata/videos.db"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     default_fps: int = 16
+    # When set, POST /videos/generate enqueues to Redis; run `arq app.worker_settings.WorkerSettings`
+    # (or use deploy/start.sh which starts a worker when REDIS_URL is set). When unset, jobs run
+    # in-process via asyncio (single-node demo).
+    redis_url: str | None = None
+
+    @field_validator("redis_url", mode="before")
+    @classmethod
+    def normalize_redis_url(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
 
 
 @lru_cache

@@ -39,6 +39,29 @@ See `.env.example`. Common keys:
 | `MAX_DURATION_SECONDS` | Hard cap for `duration_seconds` (default **5**) |
 | `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API |
 | `HF_TOKEN` | Optional token for gated models |
+| `REDIS_URL` | Optional **Redis** DSN; when set, generation runs in an **ARQ worker** (`arq app.worker_settings.WorkerSettings`) instead of in the Uvicorn process. Use the same URL for the API and worker. |
+
+### Redis queue (optional)
+
+When `REDIS_URL` is set:
+
+1. The API **enqueues** jobs after creating the SQLite row (`processing`).
+2. Run a worker: **`arq app.worker_settings.WorkerSettings`** (same `PYTHONPATH` / `backend` root as Uvicorn).
+3. In **Docker**, `deploy/start.sh` starts the worker automatically when `REDIS_URL` is present.
+
+Local example (two terminals, Redis on `localhost:6379`):
+
+```powershell
+# Terminal 1
+$env:REDIS_URL="redis://127.0.0.1:6379/0"
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 — same backend dir, same env
+$env:REDIS_URL="redis://127.0.0.1:6379/0"
+arq app.worker_settings.WorkerSettings
+```
+
+`GET /health` includes `job_queue`: `inline` or `redis`.
 
 ## HTTP API (examples)
 
@@ -75,6 +98,7 @@ GET /api/v1/videos/{video_id} HTTP/1.1
 
 - **API**: `app/api/video_routes.py`
 - **Orchestration**: `app/services/video_generation_service.py`
+- **Queue (optional)**: `app/services/job_queue.py` + `app/worker_settings.py` (ARQ) when `REDIS_URL` is set
 - **Model**: `app/services/model_provider.py` (`HuggingFaceVideoProvider`)
 - **Storage**: local directories (override with absolute paths in env on Render + attach a disk if you need persistence across deploys)
 

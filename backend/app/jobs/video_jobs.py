@@ -1,7 +1,8 @@
-"""Background/async helpers for long-running video jobs (reserved for future queue)."""
+"""Video generation jobs.
 
-# Video jobs are currently scheduled via `asyncio.create_task` from
-# `VideoGenerationService`. This module is a placeholder for a Redis/RQ/Celery
-# migration without changing API routes.
+- **Inline mode** (no `REDIS_URL`): `VideoGenerationService` schedules `execute_job` via asyncio.
+- **Redis mode** (`REDIS_URL` set): the API enqueues via `app.services.job_queue`; workers run
+  `process_video_job` in `app.worker_settings` (see `deploy/start.sh` for same-container worker).
+"""
 
 __all__: list[str] = []

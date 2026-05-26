@@ -50,6 +50,8 @@ class VideoMetadataStore:
 
     def _init_db(self) -> None:
         with self._lock, self._connect() as conn:
+            # WAL improves concurrent reads (API) + writes (worker) on the same SQLite file.
+            conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS videos (

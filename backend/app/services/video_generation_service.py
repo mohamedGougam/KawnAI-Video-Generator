@@ -58,8 +58,21 @@ class VideoGenerationService:
             duration_seconds=float(request.duration_seconds),
             negative_prompt=request.negative_prompt,
         )
-        task = asyncio.create_task(self._run_job(video_id, request))
-        task.add_done_callback(self._log_task_exception)
+        if (self._settings.redis_url or "").strip():
+            from app.services.job_queue import enqueue_video_job
+
+            try:
+                await enqueue_video_job(
+                    video_id=video_id,
+                    request_payload=request.model_dump(mode="json"),
+                )
+            except Exception as e:
+                logger.exception("Redis enqueue failed for %s", video_id)
+                self._store.mark_failed(video_id, f"Queue enqueue failed: {e}")
+                raise
+        else:
+            task = asyncio.create_task(self.execute_job(video_id, request))
+            task.add_done_callback(self._log_task_exception)
         return video_id
 
     def _log_task_exception(self, task: asyncio.Task[None]) -> None:
@@ -70,7 +83,7 @@ class VideoGenerationService:
         if exc is not None:
             logger.exception("Background video job failed: %s", exc)
 
-    async def _run_job(self, video_id: str, request: VideoGenerateRequest) -> None:
+    async def execute_job(self, video_id: str, request: VideoGenerateRequest) -> None:
         video_path = self._storage.video_abs_path(video_id)
         thumb_path = self._storage.thumbnail_abs_path(video_id)
         try:
