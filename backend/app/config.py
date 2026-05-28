@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     # (or use deploy/start.sh which starts a worker when REDIS_URL is set). When unset, jobs run
     # in-process via asyncio (single-node demo).
     redis_url: str | None = None
+    # Refuse to load Wan weights when free RAM is below this (MiB). 0 = disabled.
+    min_available_ram_mb: int = 3800
 
     @field_validator("redis_url", mode="before")
     @classmethod

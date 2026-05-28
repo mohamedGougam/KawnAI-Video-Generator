@@ -19,3 +19,4 @@ safetensors>=0.4.0
 # Optional: Redis job queue (set REDIS_URL). API enqueues; ARQ worker runs inference.
 arq>=0.26.0
 redis>=5.0.0,<6.0.0
+psutil>=5.9.0

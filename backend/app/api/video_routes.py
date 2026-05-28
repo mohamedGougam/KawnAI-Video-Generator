@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+import os
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 
 from app.config import get_settings
 from app.models.video_schema import (
@@ -19,6 +21,13 @@ from app.services.video_generation_service import (
 )
 
 router = APIRouter(prefix="/api/v1", tags=["videos"])
+
+
+def _render_requires_redis_queue() -> bool:
+    """Render web instances are too small for inline Wan inference."""
+    if not os.environ.get("RENDER"):
+        return False
+    return not (get_settings().redis_url or "").strip()
 
 
 def get_video_generation_service() -> VideoGenerationService:
@@ -99,6 +108,7 @@ def list_models() -> ModelsListResponse:
 @router.post("/videos/generate", response_model=VideoGenerateResponse)
 async def generate_video(
     body: VideoGenerateRequest,
+    background_tasks: BackgroundTasks,
     service: VideoGenerationService = Depends(get_video_generation_service),
 ) -> VideoGenerateResponse:
     settings = get_settings()
@@ -112,7 +122,17 @@ async def generate_video(
     if not moderation.allowed:
         raise HTTPException(status_code=400, detail=moderation.reason)
 
-    video_id = await service.start_generation(body)
+    if _render_requires_redis_queue():
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Video generation on Render requires REDIS_URL (Key Value + ARQ worker). "
+                "Sync render.yaml in the Render dashboard, or create a Key Value store and set "
+                "REDIS_URL on this service to its internal connection string, then redeploy."
+            ),
+        )
+
+    video_id = await service.start_generation(body, background_tasks=background_tasks)
     return VideoGenerateResponse(
         video_id=video_id,
         status="processing",

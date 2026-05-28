@@ -8,9 +8,11 @@ cd /app
 
 # Optional Redis queue: separate inference from the HTTP process (same container shares SQLite + disk).
 if [[ -n "${REDIS_URL:-}" ]]; then
-  echo "[start] REDIS_URL set — starting ARQ worker (app.worker_settings.WorkerSettings)..."
+  echo "[start] REDIS_URL is set — starting ARQ worker (app.worker_settings.WorkerSettings)..."
   /venv/bin/arq app.worker_settings.WorkerSettings > /tmp/arq.log 2>&1 &
   ARQ_PID=$!
+else
+  echo "[start] REDIS_URL is not set — video jobs will run inline in the API process (see /health job_queue)."
 fi
 
 /venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &

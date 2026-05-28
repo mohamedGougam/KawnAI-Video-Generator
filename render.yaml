@@ -5,6 +5,7 @@
 #
 # After first deploy, confirm CORS_ORIGINS matches your *.onrender.com URL (see envVars).
 
+# Wan inference on CPU needs substantial RAM — use at least Standard 4 GB for the web service.
 services:
   - type: web
     name: kawnai-video-generator
@@ -12,6 +13,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
+    # plan: standard  # uncomment / set in dashboard if you hit memory limit alerts
     envVars:
       - key: DEVICE
         value: auto
@@ -26,6 +28,8 @@ services:
           name: kawnai-video-redis
           type: keyvalue
           property: connectionString
+      - key: MIN_AVAILABLE_RAM_MB
+        value: "3500"
 
   # Redis-compatible queue for ARQ (private network; no public IP allowlist).
   - type: keyvalue

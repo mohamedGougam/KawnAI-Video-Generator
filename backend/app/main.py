@@ -95,7 +95,14 @@ app.mount(
     name="generated",
 )
 
+_queue = "redis" if (settings.redis_url or "").strip() else "inline"
 logger.info(
-    "Kawn Video Generation API ready (inference=huggingface, device_mode=%s)",
+    "Kawn Video Generation API ready (inference=huggingface, device_mode=%s, job_queue=%s)",
     describe_device_mode(settings.device),
+    _queue,
 )
+if _queue == "inline":
+    logger.warning(
+        "REDIS_URL is not set — generation runs in-process after each POST. "
+        "On Render, add Key Value + REDIS_URL (see render.yaml) for a dedicated worker."
+    )

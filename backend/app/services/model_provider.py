@@ -99,7 +99,11 @@ class HuggingFaceVideoProvider(VideoModelProvider):
             torch_dtype=dtype,
         )
         pipe.scheduler = scheduler
-        pipe.to(self._torch_device)
+        if self._torch_device == "cuda":
+            pipe.to(self._torch_device)
+        else:
+            # Keep peak RAM lower on CPU hosts (Render web instances).
+            pipe.enable_sequential_cpu_offload()
 
         self._pipe = pipe
         self._loaded = True
@@ -115,7 +119,9 @@ class HuggingFaceVideoProvider(VideoModelProvider):
     ) -> None:
         import asyncio
 
-        self._ensure_loaded()
+        # Model download/load is sync and heavy — never run on the asyncio event loop
+        # (blocks POST /videos/generate and triggers Render/nginx 502 timeouts).
+        await asyncio.to_thread(self._ensure_loaded)
 
         height, width = _pixels_for_resolution(
             str(request.resolution.value),

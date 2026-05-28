@@ -63,6 +63,22 @@ npm run dev
 - **1.3B** is lighter; **14B** is higher quality but needs large GPU memory.
 - For **queues, concurrency, and when to add LTX vs Wan**, see [`docs/SCALE_AND_MODEL_STRATEGY.md`](docs/SCALE_AND_MODEL_STRATEGY.md).
 
+## Troubleshooting
+
+### “Exceeded memory limit” / 502 / 503 on Render
+
+Wan + PyTorch on **CPU** typically needs **4–8 GB+ RAM** (more is safer). A **512 MB–1 GB** web instance will OOM and restart.
+
+1. **Upgrade the web service** to at least **Standard (4 GB RAM)** or use a **GPU** instance with CUDA in the Dockerfile.
+2. **Enable Redis:** `/health` must show **`job_queue: "redis"`**. If it shows **`inline`**, add Key Value (`kawnai-video-redis` from `render.yaml`) and **`REDIS_URL`** on the web service, then redeploy. Deploy logs should say `[start] REDIS_URL is set`.
+3. **Worker logs:** Render **Shell** → `tail -n 100 /tmp/arq.log` and `/tmp/uvicorn.log`.
+4. Use **480p** and **5s** duration in the UI; avoid 14B models on small hosts.
+
+### `Request failed (502)` on Generate (other)
+
+1. **Confirm `/health`:** `job_queue` should be **`redis`** on Render.
+2. **CPU + Wan:** first run downloads multi‑GB weights; keep the tab open and poll until `completed` or `failed`.
+
 ## Safety
 
 Moderation in `backend/app/services/moderation.py` is **placeholder-only** — replace before launch.

@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
+
+from fastapi import BackgroundTasks
 
 from app.config import Settings, backend_root, get_settings, resolve_storage_path
 from app.models.video_schema import VideoGenerateRequest, VideoRecordResponse
 from app.services.metadata_store import VideoMetadataStore, VideoRow
 from app.services.model_provider import HuggingFaceVideoProvider
 from app.services.storage_service import StorageService
+from app.utils.memory import InsufficientMemoryError, check_ram_for_generation
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class VideoGenerationService:
         settings: Settings,
         store: VideoMetadataStore,
         storage: StorageService,
-        provider: HuggingFaceVideoProvider,
+        provider: HuggingFaceVideoProvider | None,
     ) -> None:
         self._settings = settings
         self._store = store
@@ -38,18 +40,27 @@ class VideoGenerationService:
         self._provider = provider
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "VideoGenerationService":
+    def from_settings(
+        cls, settings: Settings, *, load_provider: bool = True
+    ) -> "VideoGenerationService":
         db_path = resolve_storage_path(settings.database_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
         store = VideoMetadataStore(db_path)
         storage = StorageService(settings)
-        provider = HuggingFaceVideoProvider(
-            model_id=settings.hf_model_id,
-            device=settings.device,
-        )
+        provider: HuggingFaceVideoProvider | None = None
+        if load_provider:
+            provider = HuggingFaceVideoProvider(
+                model_id=settings.hf_model_id,
+                device=settings.device,
+            )
         return cls(settings=settings, store=store, storage=storage, provider=provider)
 
-    async def start_generation(self, request: VideoGenerateRequest) -> str:
+    async def start_generation(
+        self,
+        request: VideoGenerateRequest,
+        *,
+        background_tasks: BackgroundTasks,
+    ) -> str:
         video_id = self._store.create_pending(
             prompt=request.prompt,
             style=request.style.value,
@@ -71,22 +82,21 @@ class VideoGenerationService:
                 self._store.mark_failed(video_id, f"Queue enqueue failed: {e}")
                 raise
         else:
-            task = asyncio.create_task(self.execute_job(video_id, request))
-            task.add_done_callback(self._log_task_exception)
+            # Run after the HTTP response is sent (avoids 502 while weights download).
+            background_tasks.add_task(self.execute_job, video_id, request)
         return video_id
 
-    def _log_task_exception(self, task: asyncio.Task[None]) -> None:
-        try:
-            exc = task.exception()
-        except asyncio.CancelledError:
-            return
-        if exc is not None:
-            logger.exception("Background video job failed: %s", exc)
-
     async def execute_job(self, video_id: str, request: VideoGenerateRequest) -> None:
+        if self._provider is None:
+            self._store.mark_failed(
+                video_id,
+                "Inference is not available in this process (use the ARQ worker when REDIS_URL is set).",
+            )
+            return
         video_path = self._storage.video_abs_path(video_id)
         thumb_path = self._storage.thumbnail_abs_path(video_id)
         try:
+            check_ram_for_generation(min_mb=self._settings.min_available_ram_mb)
             await self._provider.generate(
                 video_id=video_id,
                 request=request,
@@ -99,6 +109,9 @@ class VideoGenerationService:
                 video_path=_relative_or_absolute(video_path),
                 thumbnail_path=_relative_or_absolute(thumb_path),
             )
+        except InsufficientMemoryError as e:
+            logger.warning("Insufficient RAM for %s: %s", video_id, e)
+            self._store.mark_failed(video_id, str(e))
         except Exception as e:
             logger.exception("Generation failed for %s", video_id)
             self._store.mark_failed(video_id, str(e))
@@ -160,10 +173,27 @@ class VideoGenerationService:
 
 
 _service: VideoGenerationService | None = None
+_worker_service: VideoGenerationService | None = None
 
 
 def get_video_service() -> VideoGenerationService:
+    """API process: metadata + enqueue only when Redis is configured."""
     global _service
     if _service is None:
-        _service = VideoGenerationService.from_settings(get_settings())
+        settings = get_settings()
+        api_only = bool((settings.redis_url or "").strip())
+        _service = VideoGenerationService.from_settings(
+            settings, load_provider=not api_only
+        )
     return _service
+
+
+def get_worker_video_service() -> VideoGenerationService:
+    """ARQ worker process: always loads the Hugging Face provider."""
+    global _worker_service
+    if _worker_service is None:
+        _worker_service = VideoGenerationService.from_settings(
+            get_settings(), load_provider=True
+        )
+        logger.info("Worker VideoGenerationService initialized")
+    return _worker_service
